@@ -224,6 +224,9 @@ if __name__ == "__main__":
                         help='training samples per task (all if negative)')
     parser.add_argument('--shuffle_tasks', type=str, default='no',
                         help='present tasks in order')
+    #####
+    parser.add_argument('--sampling_rate', type=float, default=1,
+                        help='sample rate')
     args = parser.parse_args()
 
     args.cuda = True if args.cuda == 'yes' else False
@@ -261,14 +264,16 @@ if __name__ == "__main__":
     result_t, result_a, spent_time = life_experience(
         model, continuum, x_te, args)
 
-
+    violation_times = model.get_violation_frequnecy()
+    print(violation_times)
     # prepare saving path and file name
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
-
+    sampling_rate = args.sampling_rate
     fname = args.model + '_' + args.data_file + '_'
     fname += datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    fname += '_' + uid
+    # fname += '_' + uid
+    fname += '_' + sampling_rate
     fname = os.path.join(args.save_path, fname)
 
     # save confusion matrix and print one line of stats

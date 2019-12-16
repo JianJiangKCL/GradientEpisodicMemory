@@ -77,3 +77,9 @@ d =100
 x = torch.randn([b,d])
 v_x = x.view(x.size(0), -1)
 print(v_x.shape)
+print(b/float(d))
+
+
+fname = 'lala'
+fname += '_'+str(d)
+print(fname)

@@ -52,7 +52,7 @@ def store_grad(pp, grads, grad_dims, tid):
             grads[beg: en, tid].copy_(param.grad.data.view(-1))  # to 1 dimension
         cnt += 1
 
-def grads_sampling(grads, sampling_rate=0.5):
+def grads_sampling(grads, sampling_rate=1):
     len_params = grads.shape[0]
     sampling_size = int(len_params * sampling_rate)
     idx_params_list = [i for i in range(len_params)]
@@ -131,7 +131,8 @@ class Net(nn.Module):
 
         self.n_memories = args.n_memories   # 256 for all the tasks in gem
         self.gpu = args.cuda
-
+        self.violate_time = 0
+        self.iteration = 0
         # allocate episodic memory
         # n_inputs are detailed features of samples
         self.memory_data = torch.FloatTensor(
@@ -176,8 +177,13 @@ class Net(nn.Module):
                 output[:, offset2:self.n_outputs].data.fill_(-10e10)
         return output
 
+
+    def get_violation_frequnecy(self):
+        return self.violate_time/float(self.iteration)
     # this is like batch iteration with constraints
     def observe(self, x, t, y):
+
+        self.iteration += 1
         # update memory
         if t != self.old_task:
             self.observed_tasks.append(t)
@@ -263,7 +269,7 @@ class Net(nn.Module):
             # they are all tensors
             # print(type(self.grads))
             # print(type(sampled_grads))
-            sampled_idx = torch.cudaLongTensor(sampled_idx) if self.gpu \
+            sampled_idx = torch.cuda.LongTensor(sampled_idx) if self.gpu \
                 else torch.LongTensor(sampled_idx)
             # sampled_grads.shape
             # torch.Size([44805, 20])
@@ -273,16 +279,18 @@ class Net(nn.Module):
             # print('sampled_grads.shape', sampled_grads.shape)
             # print('grads.shape', self.grads.shape)
             dotp = torch.mm(sampled_grads[:, t].unsqueeze(0),
-                            sampled_grads.index_select(1, sampled_idx)
+                            sampled_grads.index_select(1, indx)
                             )
             if (dotp < 0).sum() != 0:
+                self.violate_time += 1
                 # the result of project2cone2 saved in the first input para, self.grads
                 project2cone2(sampled_grads[:, t].unsqueeze(1),
-                              sampled_grads.index_select(1, sampled_idx), self.margin)
+                              sampled_grads.index_select(1, indx), self.margin)
                 # copy gradients back
 
-                self.grads = grads_back(sampled_grads,self.grads, sampled_idx)
-                overwrite_grad(self.parameters, sampled_grads[:, t],
+                self.grads[sampled_idx] = sampled_grads
+                # self.grads = grads_back(sampled_grads, self.grads, sampled_idx)
+                overwrite_grad(self.parameters, self.grads[:, t],
                                self.grad_dims)
 
         self.opt.step()
