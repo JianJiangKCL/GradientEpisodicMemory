@@ -44,17 +44,17 @@ import quadprog
 # print(torch.Tensor(x).view(-1, 1).shape)
 # print('gradient', gradient)
 # gradient.copy_(torch.Tensor(x).view(-1, 1))
-max = 6
-# a = random.randint(0,max,[2,4])
-a = [1,2,3,4,5,6]
-a = [i for i in range(0, max)]
-a= random.sample(a,4)
-k = torch.randn([9,10])
-out = k[a]
-# a = torch.rand([2,3])
-print(a)
-print(k)
-print(out)
+# max = 6
+# # a = random.randint(0,max,[2,4])
+# a = [1,2,3,4,5,6]
+# a = [i for i in range(0, max)]
+# a= random.sample(a,4)
+# k = torch.randn([9,10])
+# out = k[a]
+# # a = torch.rand([2,3])
+# print(a)
+# print(k)
+# print(out)
 # a = torch.from_numpy(a)
 # out = a.index_select(0,torch.tensor([0,1]))
 # print(out)
@@ -64,3 +64,16 @@ print(out)
 note 
 use chmod -R 777
 '''
+
+# list = []
+#
+# for j in range(5):
+#     tmp = [[j,i] for i in range(6)]
+#     random.shuffle(tmp)
+#     list += tmp
+# print(list)
+b = 5
+d =100
+x = torch.randn([b,d])
+v_x = x.view(x.size(0), -1)
+print(v_x.shape)

@@ -19,8 +19,9 @@ from metrics.metrics import confusion_matrix
 
 # continuum iterator #########################################################
 
-
+# the dataset preprocess is in raw.py
 def load_datasets(args):
+    # d_tr is training set, d_te is testing set
     d_tr, d_te = torch.load(args.data_path + '/' + args.data_file)
     n_inputs = d_tr[0][1].size(1)
     n_outputs = 0
@@ -33,17 +34,21 @@ def load_datasets(args):
 class Continuum:
 
     def __init__(self, data, args):
+        # self.data[n_task][3][samples] and [1] is the feature, [2] is the label
         self.data = data
         self.batch_size = args.batch_size
         n_tasks = len(data)
         task_permutation = range(n_tasks)
 
+        # change the ordering of tasks.
         if args.shuffle_tasks == 'yes':
             task_permutation = torch.randperm(n_tasks).tolist()
 
         sample_permutations = []
 
+        # change the ordering of samples within each task
         for t in range(n_tasks):
+            # N is available samples for task t
             N = data[t][1].size(0)
             if args.samples_per_task <= 0:
                 n = N
@@ -53,13 +58,15 @@ class Continuum:
             p = torch.randperm(N)[0:n]
             sample_permutations.append(p)
 
-        self.permutation = []
+        # a list save all samples from different tasks. Note samples from a certain task is continuous
+        self.permutation = []   # [[task1,sample2],[task1,sample5].... ] [n_samples,2]
 
         for t in range(n_tasks):
             task_t = task_permutation[t]
             for _ in range(args.n_epochs):
                 task_p = [[task_t, i] for i in sample_permutations[task_t]]
                 random.shuffle(task_p)
+                # for list , += is equal to .append()
                 self.permutation += task_p
 
         self.length = len(self.permutation)
@@ -71,35 +78,43 @@ class Continuum:
     def next(self):
         return self.__next__()
 
+    '''
+    return a batch_size of samples but can be less than the batch size as a batch must contain samples belong to 
+    the same task
+    '''
     def __next__(self):
         if self.current >= self.length:
             raise StopIteration
         else:
-            ti = self.permutation[self.current][0]
+
+            ti = self.permutation[self.current][0]  # task id
+            # j saves sample id
             j = []
             i = 0
             while (((self.current + i) < self.length) and
                    (self.permutation[self.current + i][0] == ti) and
                    (i < self.batch_size)):
-                j.append(self.permutation[self.current + i][1])
+                j.append(self.permutation[self.current + i][1])  # the sample idx
                 i += 1
             self.current += i
             j = torch.LongTensor(j)
+            # self.data[n_task][3][samples] and [1] is the feature, [2] is the label
             return self.data[ti][1][j], ti, self.data[ti][2][j]
 
 # train handle ###############################################################
 
-
+# tasks is the testing set,
 def eval_tasks(model, tasks, args):
+    # set the mode to evaluation
     model.eval()
     result = []
     for i, task in enumerate(tasks):
         t = i
-        x = task[1]
+        x = task[1]  # x is the data.
         y = task[2]
         rt = 0
         
-        eval_bs = x.size(0)
+        eval_bs = x.size(0)  # bs is batch size
 
         for b_from in range(0, x.size(0), eval_bs):
             b_to = min(b_from + eval_bs, x.size(0) - 1)
@@ -118,28 +133,40 @@ def eval_tasks(model, tasks, args):
 
     return result
 
-
+# x_te is testing set
 def life_experience(model, continuum, x_te, args):
+    # result_a is results for all tasks
+    # result_t is the result of current task
     result_a = []
     result_t = []
 
     current_task = 0
     time_start = time.time()
-
+    # self.data[ti][1][j], ti, self.data[ti][2][j]
+    # print('life_experience')
+    # t is not in the nature ordering, but for samples in the sm
     for (i, (x, t, y)) in enumerate(continuum):
+        # print('x', x.shape)
+        # x is [10,784] with 10 is batch size for mnist
+        # enumerate continum
+        # will return a batch-size samples , i means which batch
         if(((i % args.log_every) == 0) or (t != current_task)):
             result_a.append(eval_tasks(model, x_te, args))
             result_t.append(current_task)
             current_task = t
 
+        # v_x is [10,784] for mnist
         v_x = x.view(x.size(0), -1)
+        # print('vx', v_x.shape)
         v_y = y.long()
 
         if args.cuda:
             v_x = v_x.cuda()
             v_y = v_y.cuda()
 
-        model.train()
+
+
+        model.train()         # set the mode to training
         model.observe(v_x, t, v_y)
 
     result_a.append(eval_tasks(model, x_te, args))
@@ -227,11 +254,13 @@ if __name__ == "__main__":
     Model = importlib.import_module('model.' + args.model)
     model = Model.Net(n_inputs, n_outputs, n_tasks, args)
     if args.cuda:
+        # todo model.cuda()
         model.cuda()
 
     # run model on continuum
     result_t, result_a, spent_time = life_experience(
         model, continuum, x_te, args)
+
 
     # prepare saving path and file name
     if not os.path.exists(args.save_path):

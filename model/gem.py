@@ -54,7 +54,7 @@ def store_grad(pp, grads, grad_dims, tid):
 
 def grads_sampling(grads, sampling_rate=0.5):
     len_params = grads.shape[0]
-    sampling_size = len_params * sampling_rate
+    sampling_size = int(len_params * sampling_rate)
     idx_params_list = [i for i in range(len_params)]
     sampled_idx = random.sample(idx_params_list, sampling_size)
     sampled_grads = grads[sampled_idx]
@@ -176,6 +176,7 @@ class Net(nn.Module):
                 output[:, offset2:self.n_outputs].data.fill_(-10e10)
         return output
 
+    # this is like batch iteration with constraints
     def observe(self, x, t, y):
         # update memory
         if t != self.old_task:
@@ -185,7 +186,7 @@ class Net(nn.Module):
         # Update ring buffer storing examples from current task
         # todo buffer size should be changed into index of sample in the memory
         bsz = y.data.size(0)  # buffer size is the num of samples
-        endcnt = min(self.mem_cnt + bsz, self.n_memories)   # compared with 256
+        endcnt = min(self.mem_cnt + bsz, self.n_memories)   # compared with pre-define memory size 256
         effbsz = endcnt - self.mem_cnt  # effective buffer size
         self.memory_data[t, self.mem_cnt: endcnt].copy_(
             x.data[: effbsz])  # copy the eff size samples to the memory_data
@@ -195,6 +196,7 @@ class Net(nn.Module):
             self.memory_labs[t, self.mem_cnt: endcnt].copy_(
                 y.data[: effbsz])
         self.mem_cnt += effbsz
+        # below condition fulfill the idea that select the last m samples from a task, as it will become 0.
         if self.mem_cnt == self.n_memories:
             self.mem_cnt = 0
 
@@ -225,7 +227,6 @@ class Net(nn.Module):
         """Sets gradients of all model parameters to zero."""
         self.zero_grad()
 
-
         offset1, offset2 = compute_offsets(t, self.nc_per_task, self.is_cifar)
         loss = self.ce(self.forward(x, t)[:, offset1: offset2], y - offset1)
         loss.backward()
@@ -242,6 +243,7 @@ class Net(nn.Module):
             from all the sub-tensor in that dim, select the indices
             indices's max value is the num of elements of that dimension
             '''
+
             # dotproduction
             # the t-th task (current task)
             # dotp = torch.mm(self.grads[:, t].unsqueeze(0),
@@ -258,15 +260,25 @@ class Net(nn.Module):
             # sampled version of constraints
 
             sampled_grads, sampled_idx = grads_sampling(self.grads)
-            print('sampled_grads.shape', sampled_grads.shape)
-            print('grads.shape', self.grads.shape)
+            # they are all tensors
+            # print(type(self.grads))
+            # print(type(sampled_grads))
+            sampled_idx = torch.cudaLongTensor(sampled_idx) if self.gpu \
+                else torch.LongTensor(sampled_idx)
+            # sampled_grads.shape
+            # torch.Size([44805, 20])
+            # grads.shape
+            # torch.Size([89610, 20])
+
+            # print('sampled_grads.shape', sampled_grads.shape)
+            # print('grads.shape', self.grads.shape)
             dotp = torch.mm(sampled_grads[:, t].unsqueeze(0),
-                            sampled_grads.index(1, indx)
+                            sampled_grads.index_select(1, sampled_idx)
                             )
             if (dotp < 0).sum() != 0:
                 # the result of project2cone2 saved in the first input para, self.grads
                 project2cone2(sampled_grads[:, t].unsqueeze(1),
-                              sampled_grads.index_select(1, indx), self.margin)
+                              sampled_grads.index_select(1, sampled_idx), self.margin)
                 # copy gradients back
 
                 self.grads = grads_back(sampled_grads,self.grads, sampled_idx)
