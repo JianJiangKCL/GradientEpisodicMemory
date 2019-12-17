@@ -72,14 +72,56 @@ use chmod -R 777
 #     random.shuffle(tmp)
 #     list += tmp
 # print(list)
-b = 5
-d =100
-x = torch.randn([b,d])
-v_x = x.view(x.size(0), -1)
-print(v_x.shape)
-print(b/float(d))
+# b = 5
+# d =100
+# x = torch.randn([b,d])
+# v_x = x.view(x.size(0), -1)
+# print(v_x.shape)
+# print(b/float(d))
+#
+#
+# fname = 'lala'
+# fname += '_'+str(d)
+# print(fname)
+#
+# x = torch.randn([4,5])
+# eval_bs = x.size(0)  # bs is batch size
+# cnt =0
+# for b_from in range(0, 5, 5):
+#     cnt +=1
+# print(cnt)
 
 
-fname = 'lala'
-fname += '_'+str(d)
-print(fname)
+# e.g.
+# result_t = torch.tensor([0,1,2,4,3,5])
+# 6 [1, 2, 3, 4, 5]
+def task_changes(result_t):
+    n_tasks = int(result_t.max() + 1)
+    changes = []
+    current = result_t[0]
+    for i, t in enumerate(result_t):
+        print("i,t",i,t)
+        if t != current:
+            changes.append(i)
+            current = t
+
+    return n_tasks, changes
+
+#
+# result_t = torch.tensor([0,0,2,4,3,5,3,2,1,1])
+#
+# n,changes = task_changes(result_t)
+# print(n,changes)
+# fname ='test'
+# # torch.save((n,changes), fname + '.pt')
+# tn,tchange = torch.load(fname+'.pt')
+# print(tn,tchange)
+import argparse
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Continuum learning')
+
+    # model parameters
+    parser.add_argument('--i', type=str, default='float',
+                        help='model to train')
+    args = parser.parse_args()
+    print(int(args.i)/100)

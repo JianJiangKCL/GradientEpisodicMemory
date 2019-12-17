@@ -42,7 +42,10 @@ tasks_te = []
 
 x_tr, y_tr = torch.load(os.path.join(args.i, 'mnist_train.pt'))
 x_te, y_te = torch.load(os.path.join(args.i, 'mnist_test.pt'))
-
+# [60000, 28, 28]) torch.Size([60000])
+# print(x_tr.shape,y_tr.shape)
+# y_te.max().item() get the max class index
+print(y_te.max().item())
 for t in range(args.n_tasks):
     min_rot = 1.0 * t / args.n_tasks * (args.max_rot - args.min_rot) + \
         args.min_rot
@@ -53,4 +56,5 @@ for t in range(args.n_tasks):
     tasks_tr.append([rot, rotate_dataset(x_tr, rot), y_tr])
     tasks_te.append([rot, rotate_dataset(x_te, rot), y_te])
 
+# that's the reason why data has three dimensions
 torch.save([tasks_tr, tasks_te], args.o)

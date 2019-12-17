@@ -8,7 +8,12 @@ from __future__ import print_function
 
 import torch
 
-
+# this to check in which position, tasks are changed
+# e.g.
+# result_t = torch.tensor([5,3,2,4,1,0])
+# 6 [1, 2, 3, 4, 5]
+# result_t = torch.tensor([0,0,2,4,3,5,3,2,1,1])
+# 6 [2, 3, 4, 5, 6, 7, 8]
 def task_changes(result_t):
     n_tasks = int(result_t.max() + 1)
     changes = []

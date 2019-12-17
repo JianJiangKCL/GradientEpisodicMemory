@@ -165,6 +165,7 @@ class Net(nn.Module):
             self.nc_per_task = n_outputs
 
 
+    # t is for cifar
     def forward(self, x, t):
         output = self.net(x)
         if self.is_cifar:
@@ -247,7 +248,7 @@ class Net(nn.Module):
             ''' index_select(dim,indices)
             indices should be tensor form
             from all the sub-tensor in that dim, select the indices
-            indices's max value is the num of elements of that dimension
+            indices's max value is the num of elements of that dimensionF
             '''
 
             # dotproduction
