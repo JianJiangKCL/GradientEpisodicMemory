@@ -32,7 +32,7 @@ CIFAR_100i="--n_layers 2 --n_hiddens 100 --data_path data/ --save_path results/ 
 # 	--seed 0 \
 # 	--n_tasks 20
 #cd ..
-for(( i = 10; i <= 100; i = i + 10 ))
+for(( i = 10; i <= 10; i = i + 10 ))
 do
 
   $MY_PYTHON main.py $MNIST_ROTA --model gem --lr 0.1 --n_memories 256 --memory_strength 0.5 --sampling_rate $i

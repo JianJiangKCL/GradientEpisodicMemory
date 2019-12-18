@@ -141,7 +141,7 @@ def eval_tasks(model, tasks, args):
             rt += (pb == yb).float().sum()
 
         result.append(rt / x.size(0))
-
+        # print('task',i,'  avg_acc',rt/x.size(0))
     return result
 
 # x_te is testing set
@@ -161,6 +161,7 @@ def life_experience(model, continuum, x_te, args):
         # x is [10,784] with 10 is batch size for mnist
         # enumerate continum
         # will return a batch-size samples , i means which batch
+        # print('this is learning task ', t)
         if(((i % args.log_every) == 0) or (t != current_task)):
             # result_a is the results for samples of different tasks in testing set
             # for tasks in mnist, each of them share same class space i.e. 0~9
@@ -260,7 +261,8 @@ if __name__ == "__main__":
 
     # load data
     x_tr, x_te, n_inputs, n_outputs, n_tasks = load_datasets(args)
-
+    sampling_rate = float(args.sampling_rate) / 100.0
+    print("sample_rate", sampling_rate)
     # set up continuum
     # tasks_tr [rot, rotate_dataset(x_tr, rot), y_tr])
     continuum = Continuum(x_tr, args)
@@ -281,8 +283,8 @@ if __name__ == "__main__":
     # prepare saving path and file name
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
-    sampling_rate = float(args.sampling_rate)/100.0
-    print("violation times", violation_times, "sample_rate", sampling_rate)
+
+    print("violation times", violation_times)
     print('spent_time', spent_time)
     fname = args.model + '_' + args.data_file + '_'
     # fname += datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -300,4 +302,4 @@ if __name__ == "__main__":
     torch.save((result_t, result_a, model.state_dict(),
                 stats, one_liner, args), fname + '.pt')
 
-    torch.save((violation_times,spent_time),fname+'_others'.pt)
+    torch.save((violation_times,spent_time),fname+'_others.pt')

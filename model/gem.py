@@ -71,6 +71,7 @@ def overwrite_grad(pp, newgrad, grad_dims):
     """
     cnt = 0
     for param in pp():
+        # print(param)
         if param.grad is not None:
             beg = 0 if cnt == 0 else sum(grad_dims[:cnt])
             en = sum(grad_dims[:cnt + 1])
@@ -78,6 +79,7 @@ def overwrite_grad(pp, newgrad, grad_dims):
                 param.grad.data.size())
             param.grad.data.copy_(this_grad)
         cnt += 1
+    print(cnt)
 
 def grads_back(sampled_idx, sampled_grads, grads):
     grads[sampled_idx] = sampled_grads
@@ -123,12 +125,14 @@ class Net(nn.Module):
             self.net = ResNet18(n_outputs)
         else:
             self.net = MLP([n_inputs] + [nh] * nl + [n_outputs])
+            size = [n_inputs] + [nh] * nl + [n_outputs]
+            print('szie',size)
 
         self.ce = nn.CrossEntropyLoss()
         self.n_outputs = n_outputs
 
         self.opt = optim.SGD(self.parameters(), args.lr)
-
+        self.sampling_rate = float(args.sampling_rate)/100.0
         self.n_memories = args.n_memories   # 256 for all the tasks in gem
         self.gpu = args.cuda
         self.violate_time = 0
@@ -189,6 +193,8 @@ class Net(nn.Module):
         if t != self.old_task:
             self.observed_tasks.append(t)
             self.old_task = t
+        param_num = sum(self.grad_dims[:])
+        # print('param_num', param_num)
 
         # Update ring buffer storing examples from current task
         # todo buffer size should be changed into index of sample in the memory
@@ -266,7 +272,7 @@ class Net(nn.Module):
             # todo sample memory. and use the constraints in a-gem
             # sampled version of constraints
 
-            sampled_grads, sampled_idx = grads_sampling(self.grads)
+            sampled_grads, sampled_idx = grads_sampling(self.grads, sampling_rate=self.sampling_rate)
             # they are all tensors
             # print(type(self.grads))
             # print(type(sampled_grads))
